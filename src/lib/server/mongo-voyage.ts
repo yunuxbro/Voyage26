@@ -23,9 +23,50 @@ export type RegistrationPaymentSettings = {
   account_number: string;
   ifsc_code: string;
   upi_id: string;
+  demo_transfer_mode: boolean;
   registration_image_url: string;
+  shirt_image_url: string;
+  shirt_sizes: string[];
   package_prices: Record<DelegateOption, number>;
 };
+
+const DEMO_TRANSFER_DETAILS = {
+  account_holder: "VOYAGE '26 DEMO - NOT A REAL ACCOUNT",
+  bank_name: "DEMO ONLY - DO NOT TRANSFER",
+  account_number: "000000000000",
+  ifsc_code: "DEMO0000000",
+  upi_id: "demo@upi",
+} as const;
+const DEFAULT_SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+
+function readShirtSizes(value: unknown): string[] {
+  const candidates = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : DEFAULT_SHIRT_SIZES;
+  const sizes = [...new Set(candidates
+    .filter((size): size is string => typeof size === "string")
+    .map((size) => size.trim().toUpperCase())
+    .filter((size) => /^[A-Z0-9-]{1,10}$/.test(size)))];
+  return sizes.length ? sizes.slice(0, 12) : DEFAULT_SHIRT_SIZES;
+}
+
+function normalizePaymentSettings(row: RegistrationPaymentSettings): RegistrationPaymentSettings {
+  const demoTransferMode = row.demo_transfer_mode !== false;
+  return {
+    ...row,
+    account_holder: row.account_holder || (demoTransferMode ? DEMO_TRANSFER_DETAILS.account_holder : ""),
+    bank_name: row.bank_name || (demoTransferMode ? DEMO_TRANSFER_DETAILS.bank_name : ""),
+    account_number: row.account_number || (demoTransferMode ? DEMO_TRANSFER_DETAILS.account_number : ""),
+    ifsc_code: row.ifsc_code || (demoTransferMode ? DEMO_TRANSFER_DETAILS.ifsc_code : ""),
+    upi_id: row.upi_id || (demoTransferMode ? DEMO_TRANSFER_DETAILS.upi_id : ""),
+    demo_transfer_mode: demoTransferMode,
+    shirt_image_url: row.shirt_image_url || "/images/product-tee.jpg",
+    shirt_sizes: readShirtSizes(row.shirt_sizes),
+    package_prices: readPackagePrices(row.package_prices),
+  };
+}
 
 export type SiteSettings = {
   id: number;
@@ -78,6 +119,7 @@ export type Registration = {
   crew_track: string;
   motivation: string;
   delegate_option: string;
+  shirt_size: string | null;
   amount_cents: number;
   amount_paid_cents: number;
   payment_status: string;
@@ -217,7 +259,7 @@ export const verifyAdminAccess = createServerFn({ method: "POST" })
 export const getRegistrationPaymentSettings = createServerFn({ method: "GET" }).handler(async () => {
   const row = await findOne<RegistrationPaymentSettings>("registration_payment_settings", { id: 1 });
   if (!row) throw new Error("Payment settings are not available.");
-  return { ...row, package_prices: readPackagePrices(row.package_prices) };
+  return normalizePaymentSettings(row);
 });
 
 type RegisterInput = {
@@ -226,6 +268,7 @@ type RegisterInput = {
   iitEmail: string;
   phone: string;
   delegateOption?: DelegateOption | "";
+  shirtSize?: string;
   slipBase64?: string;
   slipContentType?: string;
   slipFileName?: string;
@@ -276,12 +319,24 @@ export const registerDelegate = createServerFn({ method: "POST" })
     if (!iitEmail.includes("@") || iitEmail.length < 5) throw new Error("Enter a valid IIT email.");
     if (phone.replace(/\D/g, "").length < 10) throw new Error("Enter a valid phone number.");
 
-    const settings = await findOne<RegistrationPaymentSettings>("registration_payment_settings", { id: 1 });
+    const storedSettings = await findOne<RegistrationPaymentSettings>("registration_payment_settings", { id: 1 });
+    const settings = storedSettings ? normalizePaymentSettings(storedSettings) : null;
     if (!settings?.account_holder || !settings.bank_name || !settings.account_number || !settings.ifsc_code) {
       throw new Error("Registration is not open yet. Transfer details are being configured.");
     }
     const amountCents = readPackagePrices(settings.package_prices)[delegateOption];
-    if (!Number.isSafeInteger(amountCents) || amountCents < 0) throw new Error("This package is not available.");
+    if (
+      !Number.isSafeInteger(amountCents) ||
+      amountCents < 0 ||
+      (delegateOption !== "Register only" && amountCents === 0)
+    ) {
+      throw new Error("This package is not available.");
+    }
+    const shirtSize = data.shirtSize?.trim().toUpperCase() ?? "";
+    const includesShirt = delegateOption.includes("T-shirt");
+    if (includesShirt && !readShirtSizes(settings.shirt_sizes).includes(shirtSize)) {
+      throw new Error("Choose an available T-shirt size.");
+    }
 
     const registrationId = await nextMongoId("registrations");
     let slipFileId: string | null = null;
@@ -310,6 +365,7 @@ export const registerDelegate = createServerFn({ method: "POST" })
         crew_track: "",
         motivation: "",
         delegate_option: delegateOption,
+        shirt_size: includesShirt ? shirtSize : null,
         amount_cents: amountCents,
         amount_paid_cents: 0,
         payment_status: "submitted",
@@ -441,7 +497,10 @@ export const updateRegistrationPaymentSettings = createServerFn({ method: "POST"
     accountNumber: string;
     ifscCode: string;
     upiId: string;
+    demoTransferMode: boolean;
     registrationImageUrl: string;
+    shirtImageUrl: string;
+    shirtSizes: string[];
     packagePricesRupees: Record<DelegateOption, number>;
   }) => data)
   .handler(async ({ data }) => {
@@ -451,13 +510,15 @@ export const updateRegistrationPaymentSettings = createServerFn({ method: "POST"
     const accountNumber = data.accountNumber.trim();
     const ifscCode = data.ifscCode.trim().toUpperCase();
     const upiId = data.upiId.trim();
+    const shirtImageUrl = data.shirtImageUrl.trim();
+    const shirtSizes = readShirtSizes(data.shirtSizes);
     if (!accountHolder || !bankName || !/^\d{8,20}$/.test(accountNumber) || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode)) {
       throw new Error("Enter the account holder, bank, account number, and a valid IFSC code.");
     }
     const packagePrices = Object.fromEntries(delegateOptions.map((option) => {
       const cents = Math.round(Number(data.packagePricesRupees[option]) * 100);
-      if (!Number.isSafeInteger(cents) || cents < 0 || (option !== "Register only" && cents === 0)) {
-        throw new Error(`Enter a positive package price for ${option}; register-only may be free.`);
+      if (!Number.isSafeInteger(cents) || cents < 0) {
+        throw new Error(`Enter a valid non-negative package price for ${option}.`);
       }
       return [option, cents];
     })) as Record<DelegateOption, number>;
@@ -465,6 +526,10 @@ export const updateRegistrationPaymentSettings = createServerFn({ method: "POST"
     if (imageUrl && !/^data:image\/(png|jpeg|webp|gif);base64,/.test(imageUrl)) {
       throw new Error("Upload a valid registration image.");
     }
+    if (!/^\/(images|assets)\//.test(shirtImageUrl) && !/^data:image\/(png|jpeg|webp|gif);base64,/.test(shirtImageUrl)) {
+      throw new Error("Upload a valid T-shirt sample image.");
+    }
+    if (!shirtSizes.length) throw new Error("Add at least one available T-shirt size.");
     const db = await getMongoDb();
     await db.collection("registration_payment_settings").updateOne(
       { id: 1 },
@@ -475,7 +540,10 @@ export const updateRegistrationPaymentSettings = createServerFn({ method: "POST"
           account_number: accountNumber,
           ifsc_code: ifscCode,
           upi_id: upiId,
+          demo_transfer_mode: data.demoTransferMode,
           registration_image_url: imageUrl,
+          shirt_image_url: shirtImageUrl,
+          shirt_sizes: shirtSizes,
           package_prices: packagePrices,
           updated_at: new Date().toISOString(),
         },
@@ -490,7 +558,11 @@ export const exportRegistrations = createServerFn({ method: "GET" })
   .handler(async () => {
     requireAdminSession();
     const rows = await findMany<Registration>("registrations", {}, { created_at: -1, id: -1 });
-    return rows.map(({ has_payment_slip: _hasSlip, ...row }) => ({ ...row, created_at: asIso(row.created_at) }));
+    return rows.map(({ has_payment_slip: _hasSlip, ...row }) => ({
+      ...row,
+      shirt_size: row.shirt_size ?? null,
+      created_at: asIso(row.created_at),
+    }));
   });
 
 type PlaceOrderInput = {
@@ -622,7 +694,7 @@ export const adminDashboard = createServerFn({ method: "GET" })
       })),
       orders: orders.map((row) => ({ ...row, created_at: asIso(row.created_at) })),
       paymentSettings: paymentSettings
-        ? { ...paymentSettings, package_prices: readPackagePrices(paymentSettings.package_prices) }
+        ? normalizePaymentSettings(paymentSettings)
         : null,
     };
   });

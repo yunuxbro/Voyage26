@@ -41,25 +41,24 @@ function RegisterPage() {
     iitEmail: string;
     phone: string;
     delegateOption: DelegateOption;
+    shirtSize: string;
   }>({
     fullName: "",
     email: "",
     iitEmail: "",
     phone: "",
     delegateOption: delegateOptions[0],
+    shirtSize: "",
   });
 
   const selectedAmount = paymentSettings.package_prices[form.delegateOption as DelegateOption] ?? 0;
+  const includesShirt = form.delegateOption.includes("T-shirt");
   const registrationOpen = Boolean(
     paymentSettings.account_holder &&
       paymentSettings.bank_name &&
       paymentSettings.account_number &&
       paymentSettings.ifsc_code &&
-      delegateOptions.every((option) =>
-        option === "Register only"
-          ? paymentSettings.package_prices[option] >= 0
-          : paymentSettings.package_prices[option] > 0,
-      ),
+      (form.delegateOption === "Register only" ? selectedAmount >= 0 : selectedAmount > 0),
   );
 
   useEffect(() => {
@@ -96,6 +95,7 @@ function RegisterPage() {
           iitEmail: form.iitEmail,
           phone: form.phone,
           delegateOption: form.delegateOption as DelegateOption,
+          shirtSize: form.shirtSize,
           slipBase64,
           slipContentType: slipFile?.type ?? "",
           slipFileName: slipFile?.name ?? "",
@@ -211,12 +211,36 @@ function RegisterPage() {
             required
           >
             {delegateOptions.map((option) => (
-              <option key={option} value={option}>
-                {option === "Register only" ? "Register only (no merchandise)" : option} - {formatInr(paymentSettings.package_prices[option])}
+              <option key={option} value={option} disabled={option !== "Register only" && paymentSettings.package_prices[option] <= 0}>
+                {option === "Register only" ? "Register only (no merchandise)" : option} - {paymentSettings.package_prices[option] > 0 ? formatInr(paymentSettings.package_prices[option]) : option === "Register only" ? formatInr(0) : "Not configured"}
               </option>
             ))}
           </Select>
         </div>
+
+        {includesShirt ? (
+          <div className="grid gap-4 border-y border-gold/20 py-5 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-center">
+            <img
+              src={paymentSettings.shirt_image_url}
+              alt="Sample Voyage T-shirt"
+              className="h-56 w-full bg-white/5 object-contain p-3"
+            />
+            <div>
+              <Label htmlFor="shirtSize">T-shirt size</Label>
+              <Select
+                id="shirtSize"
+                value={form.shirtSize}
+                onChange={(e) => setForm({ ...form, shirtSize: e.target.value })}
+                required
+              >
+                <option value="" disabled>Choose a size</option>
+                {paymentSettings.shirt_sizes.map((size) => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </Select>
+            </div>
+          </div>
+        ) : null}
 
         <section className="grid gap-3 border-y border-gold/20 py-5" aria-labelledby="transfer-heading">
           <div>
@@ -224,6 +248,12 @@ function RegisterPage() {
             <p className="mt-1 text-xs text-muted">{selectedAmount > 0 ? "Transfer the exact package amount, then attach the receipt below." : "No package payment is due for this selection."}</p>
           </div>
           {registrationOpen ? (
+            <>
+            {paymentSettings.demo_transfer_mode ? (
+              <p className="border border-red-400/40 bg-red-950/30 p-3 text-sm font-medium text-red-200">
+                DEMO ONLY: These fictional bank details cannot receive money. Do not make a transfer.
+              </p>
+            ) : null}
             <dl className="grid gap-2 text-sm sm:grid-cols-2">
               <div><dt className="text-muted">Account name</dt><dd className="text-parchment">{paymentSettings.account_holder}</dd></div>
               <div><dt className="text-muted">Bank</dt><dd className="text-parchment">{paymentSettings.bank_name}</dd></div>
@@ -232,8 +262,9 @@ function RegisterPage() {
               {paymentSettings.upi_id ? <div><dt className="text-muted">UPI ID</dt><dd className="text-parchment">{paymentSettings.upi_id}</dd></div> : null}
               <div><dt className="text-muted">Amount due</dt><dd className="font-medium text-gold">{formatInr(selectedAmount)}</dd></div>
             </dl>
+            </>
           ) : (
-            <p className="text-sm text-muted">Registration is temporarily closed while transfer details and package prices are configured.</p>
+            <p className="text-sm text-muted">This package is not available yet. The admin must configure its transfer price first.</p>
           )}
         </section>
 

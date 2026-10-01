@@ -130,13 +130,14 @@ function AdminPage() {
     try {
       const rows = await exportRegistrations();
       const workbook = createXlsxWorkbook(
-        ["Name", "Email", "IIT email", "Phone", "Package", "Amount due (INR)", "Amount paid (INR)", "Payment status", "Payment reference", "Submitted at", "Reviewed at", "Checked in at"],
+        ["Name", "Email", "IIT email", "Phone", "Package", "T-shirt size", "Amount due (INR)", "Amount paid (INR)", "Payment status", "Payment reference", "Submitted at", "Reviewed at", "Checked in at"],
         rows.map((row) => [
           row.full_name,
           row.email,
           row.iit_email,
           row.phone,
           row.delegate_option,
+          row.shirt_size ?? "",
           row.amount_cents / 100,
           row.amount_paid_cents / 100,
           row.payment_status,
@@ -221,12 +222,13 @@ function AdminPage() {
         ) : null}
         {tab === "berths" ? (
           <div className="overflow-x-auto rounded-[20px] bg-wood shadow-[0_0_0_1px_rgb(201_164_76_/_0.18)]">
-            <table className="w-full min-w-[1120px] text-left text-sm">
+            <table className="w-full min-w-[1240px] text-left text-sm">
               <thead className="text-[0.65rem] tracking-[0.16em] text-gold uppercase">
                 <tr>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Package</th>
+                  <th className="px-4 py-3">T-shirt size</th>
                   <th className="px-4 py-3">Due / paid</th>
                   <th className="px-4 py-3">Review</th>
                   <th className="px-4 py-3">Ref</th>
@@ -238,7 +240,7 @@ function AdminPage() {
               <tbody>
                 {data.registrations.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-6 text-muted" colSpan={9}>
+                    <td className="px-4 py-6 text-muted" colSpan={10}>
                       No registrations yet.
                     </td>
                   </tr>
@@ -252,6 +254,7 @@ function AdminPage() {
                         <div className="mt-1 text-xs">{row.phone}</div>
                       </td>
                       <td className="px-4 py-3 text-muted">{row.delegate_option}</td>
+                      <td className="px-4 py-3 text-muted">{row.shirt_size || "—"}</td>
                       <td className="px-4 py-3 tabular-nums">
                         <div className="text-parchment">{formatInr(row.amount_cents)}</div>
                         <div className="mt-1 text-xs text-gold">{formatInr(row.amount_paid_cents)} verified</div>
@@ -335,13 +338,17 @@ function PaymentSettingsForm({
 }) {
   const [busy, setBusy] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
+  const [shirtImageBusy, setShirtImageBusy] = useState(false);
   const [form, setForm] = useState(() => ({
     accountHolder: settings?.account_holder ?? "",
     bankName: settings?.bank_name ?? "",
     accountNumber: settings?.account_number ?? "",
     ifscCode: settings?.ifsc_code ?? "",
     upiId: settings?.upi_id ?? "",
-      registrationImageUrl: settings?.registration_image_url ?? "",
+    demoTransferMode: settings?.demo_transfer_mode ?? true,
+    registrationImageUrl: settings?.registration_image_url ?? "",
+    shirtImageUrl: settings?.shirt_image_url ?? "/images/product-tee.jpg",
+    shirtSizes: (settings?.shirt_sizes ?? ["XS", "S", "M", "L", "XL", "XXL"]).join(", "),
     packagePricesRupees: Object.fromEntries(
       delegateOptions.map((option) => [option, (settings?.package_prices[option] ?? 0) / 100]),
     ) as Record<DelegateOption, number>,
@@ -371,11 +378,40 @@ function PaymentSettingsForm({
     }
   }
 
+  async function uploadShirtImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Images must be smaller than 5 MB.");
+      return;
+    }
+    setShirtImageBusy(true);
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = "";
+      for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+      }
+      const result = await uploadImage({ data: { base64: btoa(binary), mimeType: file.type } });
+      setForm((current) => ({ ...current, shirtImageUrl: result.url }));
+      toast.success("T-shirt sample image uploaded.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not upload T-shirt image.");
+    } finally {
+      setShirtImageBusy(false);
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
-      await updateRegistrationPaymentSettings({ data: form });
+      await updateRegistrationPaymentSettings({
+        data: {
+          ...form,
+          shirtSizes: form.shirtSizes.split(",").map((size) => size.trim()).filter(Boolean),
+        },
+      });
       toast.success("Transfer details and package prices saved.");
       await onSaved();
     } catch (err) {
@@ -389,8 +425,16 @@ function PaymentSettingsForm({
     <form className="grid max-w-3xl gap-5" onSubmit={onSubmit}>
       <div>
         <h2 className="font-display text-2xl text-parchment">Bank transfer details</h2>
-        <p className="mt-1 text-sm text-muted">These details appear on the public registration form. New registrations stay closed until every package has a price.</p>
+        <p className="mt-1 text-sm text-muted">These details appear on the public registration form. Prices set to zero disable that package.</p>
       </div>
+      <label className="flex items-start gap-3 border border-red-400/30 bg-red-950/20 p-3 text-sm text-red-100">
+        <input
+          type="checkbox"
+          checked={form.demoTransferMode}
+          onChange={(e) => setForm({ ...form, demoTransferMode: e.target.checked })}
+        />
+        <span>Demo transfer details only. Keep enabled until you replace every fictional bank detail with your verified account information.</span>
+      </label>
       <div className="grid gap-4 sm:grid-cols-2">
         <div><Label htmlFor="accountHolder">Account holder</Label><Input id="accountHolder" value={form.accountHolder} onChange={(e) => setForm({ ...form, accountHolder: e.target.value })} required /></div>
         <div><Label htmlFor="bankName">Bank name</Label><Input id="bankName" value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} required /></div>
@@ -403,11 +447,11 @@ function PaymentSettingsForm({
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {delegateOptions.map((option) => (
             <div key={option}>
-              <Label htmlFor={`price-${option}`}>{option} (INR)</Label>
+              <Label htmlFor={`price-${option}`}>{option} (INR, 0 disables package)</Label>
               <Input
                 id={`price-${option}`}
                 type="number"
-                min={option === "Register only" ? "0" : "0.01"}
+                min="0"
                 step="0.01"
                 value={form.packagePricesRupees[option]}
                 onChange={(e) => setForm({
@@ -425,6 +469,19 @@ function PaymentSettingsForm({
         <Input id="registrationImage" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={uploadRegistrationImage} disabled={imageBusy} />
         {imageBusy ? <p className="mt-2 text-xs text-muted">Uploading…</p> : null}
         {form.registrationImageUrl ? <img src={form.registrationImageUrl} alt="Registration or payment image preview" className="mt-3 aspect-[3/1] w-full object-cover" /> : null}
+      </div>
+      <div className="grid gap-4 border-t border-gold/20 pt-5">
+        <h3 className="font-display text-xl text-parchment">T-shirt options</h3>
+        <div>
+          <Label htmlFor="shirtImage">Sample T-shirt image (PNG, JPEG, WebP, or GIF; max 5 MB)</Label>
+          <Input id="shirtImage" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={uploadShirtImage} disabled={shirtImageBusy} />
+          {shirtImageBusy ? <p className="mt-2 text-xs text-muted">Uploading…</p> : null}
+          {form.shirtImageUrl ? <img src={form.shirtImageUrl} alt="T-shirt sample preview" className="mt-3 h-56 w-full max-w-sm object-contain" /> : null}
+        </div>
+        <div>
+          <Label htmlFor="shirtSizes">Available sizes (comma-separated)</Label>
+          <Input id="shirtSizes" value={form.shirtSizes} onChange={(e) => setForm({ ...form, shirtSizes: e.target.value })} placeholder="XS, S, M, L, XL, XXL" required />
+        </div>
       </div>
       <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save payment settings"}</Button>
     </form>
