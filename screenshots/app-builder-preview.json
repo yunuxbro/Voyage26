@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Voyage '26",
+      "hasCanvas": false,
+      "bodyTextLen": 4000,
+      "bodyTextHash": "ad8d417c08f412b213b96427e8d9d47c68dcb464c38fe5ced7460663d6be2864",
+      "bodyTextPrefix": "VOYAGE '26 THE VOYAGE REGISTER SHOP AIESEC IN IIT PRESENTS VOYAG",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Voyage '26",
+      "hasCanvas": false,
+      "bodyTextLen": 4014,
+      "bodyTextHash": "1c8df5e27494a047fce89d1fe67231a686e0dc0bf86b7dd167eaa4653f3ab457",
+      "bodyTextPrefix": "VOYAGE '26 THE VOYAGE REGISTER SHOP Open the hold AIESEC IN IIT ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    @font-face {
+      font-family: "VoyageSerif";
+      src: url("file:///usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf") format("truetype");
+      font-weight: 700;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "VoyageSerif";
+      src: url("file:///usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "VoyageSerif";
+      src: url("file:///usr/share/fonts/truetype/liberation/LiberationSerif-Italic.ttf") format("truetype");
+      font-weight: 400;
+      font-style: italic;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 1200px; height: 630px; overflow: hidden; background: #0c0a08; }
+    .stage {
+      position: relative;
+      width: 1200px;
+      height: 630px;
+      background:
+        radial-gradient(ellipse 70% 55% at 78% 18%, rgba(232, 220, 196, 0.22) 0%, rgba(201, 164, 76, 0.08) 18%, transparent 46%),
+        radial-gradient(ellipse 90% 50% at 50% 100%, #1c3a3a 0%, #0c0a08 62%),
+        linear-gradient(180deg, #070605 0%, #0c0a08 38%, #122828 72%, #0a1212 100%);
+      color: #e8dcc4;
+    }
+    .stars {
+      position: absolute; inset: 0;
+      background-image:
+        radial-gradient(1.2px 1.2px at 8% 12%, #e8dcc4 70%, transparent 71%),
+        radial-gradient(1px 1px at 18% 28%, #c9a44c 70%, transparent 71%),
+        radial-gradient(1.4px 1.4px at 32% 8%, #e8dcc4 70%, transparent 71%),
+        radial-gradient(1px 1px at 44% 22%, rgba(232,220,196,.7) 70%, transparent 71%),
+        radial-gradient(1.2px 1.2px at 61% 6%, #e8dcc4 70%, transparent 71%),
+        radial-gradient(1px 1px at 72% 30%, #c9a44c 70%, transparent 71%),
+        radial-gradient(1.5px 1.5px at 88% 10%, #e8dcc4 70%, transparent 71%),
+        radial-gradient(1px 1px at 93% 24%, rgba(232,220,196,.55) 70%, transparent 71%),
+        radial-gradient(1px 1px at 12% 42%, rgba(201,164,76,.5) 70%, transparent 71%),
+        radial-gradient(1.2px 1.2px at 97% 40%, #e8dcc4 70%, transparent 71%);
+      opacity: 0.85;
+    }
+    .moon {
+      position: absolute;
+      top: 48px;
+      right: 168px;
+      width: 118px;
+      height: 118px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 38% 36%, #f3ead6 0%, #e8dcc4 28%, #c9a44c 78%, #8a6e32 100%);
+      box-shadow:
+        0 0 24px 8px rgba(232, 220, 196, 0.35),
+        0 0 80px 28px rgba(201, 164, 76, 0.22),
+        0 0 160px 50px rgba(28, 58, 58, 0.35);
+    }
+    .moon::after {
+      content: "";
+      position: absolute;
+      inset: 14% 18% auto auto;
+      width: 28px; height: 22px;
+      border-radius: 50%;
+      background: rgba(138, 110, 50, 0.28);
+    }
+    .water {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 250px;
+      background:
+        linear-gradient(180deg, rgba(12,10,8,0) 0%, rgba(28,58,58,0.35) 18%, #132828 48%, #0c0a08 100%);
+    }
+    .path {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: 280px;
+      height: 250px;
+      transform: translateX(120px);
+      background: linear-gradient(180deg, rgba(232,220,196,0.28) 0%, rgba(201,164,76,0.12) 40%, transparent 100%);
+      clip-path: polygon(42% 0, 58% 0, 92% 100%, 8% 100%);
+      filter: blur(1px);
+      opacity: 0.7;
+    }
+    .ship {
+      position: absolute;
+      left: 50%;
+      bottom: 36px;
+      width: 680px;
+      height: 250px;
+      transform: translateX(-50%);
+    }
+    .lockup {
+      position: absolute;
+      left: 50%;
+      top: 36%;
+      transform: translate(-50%, -50%);
+      width: 760px;
+      text-align: center;
+      z-index: 5;
+    }
+    .scrim {
+      position: absolute;
+      left: 50%;
+      top: 36%;
+      transform: translate(-50%, -50%);
+      width: 820px;
+      height: 210px;
+      background: radial-gradient(ellipse at center, rgba(12,10,8,0.72) 0%, rgba(12,10,8,0.35) 55%, transparent 78%);
+      z-index: 4;
+      pointer-events: none;
+    }
+    h1 {
+      font-family: "VoyageSerif", "Liberation Serif", serif;
+      font-weight: 700;
+      font-size: 92px;
+      letter-spacing: 0.16em;
+      line-height: 1;
+      color: #c9a44c;
+      text-shadow:
+        0 1px 0 #e8dcc4,
+        0 2px 0 #7a2e24,
+        0 10px 28px rgba(12,10,8,0.9);
+      padding-left: 0.16em;
+    }
+    .rule {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin: 16px auto 14px;
+    }
+    .rule span {
+      display: block;
+      height: 1px;
+      width: 150px;
+      background: linear-gradient(90deg, transparent, #c9a44c, transparent);
+    }
+    .jewel {
+      width: 8px; height: 8px;
+      transform: rotate(45deg);
+      background: #c9a44c;
+      box-shadow: 0 0 10px rgba(201,164,76,0.8);
+    }
+    h2 {
+      font-family: "VoyageSerif", "Liberation Serif", serif;
+      font-weight: 400;
+      font-style: italic;
+      font-size: 28px;
+      letter-spacing: 0.34em;
+      color: #e8dcc4;
+      text-shadow: 0 4px 16px rgba(12,10,8,0.95);
+      padding-left: 0.34em;
+    }
+    .vignette {
+      position: absolute; inset: 0;
+      box-shadow: inset 0 0 140px 40px #0c0a08;
+      pointer-events: none;
+      z-index: 8;
+    }
+    .grain {
+      position: absolute; inset: 0;
+      opacity: 0.11;
+      mix-blend-mode: overlay;
+      z-index: 9;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="stars"></div>
+    <div class="moon"></div>
+    <div class="water"></div>
+    <div class="path"></div>
+    <svg class="ship" viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#3a2a1c"/>
+          <stop offset="42%" stop-color="#1a120e"/>
+          <stop offset="70%" stop-color="#7a2e24"/>
+          <stop offset="100%" stop-color="#0c0a08"/>
+        </linearGradient>
+        <linearGradient id="sail" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#cbbfa3"/>
+          <stop offset="45%" stop-color="#e8dcc4"/>
+          <stop offset="100%" stop-color="#8f846c"/>
+        </linearGradient>
+        <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#e8dcc4"/>
+          <stop offset="100%" stop-color="#c9a44c"/>
+        </linearGradient>
+        <linearGradient id="refl" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#c9a44c" stop-opacity="0.28"/>
+          <stop offset="100%" stop-color="#1c3a3a" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <!-- reflection -->
+      <g opacity="0.28" transform="translate(0 248) scale(1 -0.22)">
+        <path d="M90 210 C 140 188, 210 178, 360 176 C 520 174, 620 186, 655 208 C 640 228, 520 238, 360 240 C 200 242, 110 230, 90 210 Z" fill="#1a120e"/>
+      </g>
+      <!-- distant islands -->
+      <path d="M20 214 C 50 198, 80 202, 110 214 Z" fill="#12201f" opacity="0.7"/>
+      <path d="M600 216 C 640 200, 690 204, 718 216 Z" fill="#12201f" opacity="0.65"/>
+      <!-- water line -->
+      <path d="M40 218 C 180 210, 360 224, 680 216" fill="none" stroke="#c9a44c" stroke-opacity="0.18" stroke-width="2"/>
+      <!-- hull -->
+      <path d="M118 208 C 150 186, 210 176, 292 174 L 292 174 C 360 170, 470 172, 548 178 C 600 182, 638 190, 652 204 C 640 224, 560 236, 430 240 C 300 244, 180 236, 128 222 C 116 218, 112 214, 118 208 Z" fill="url(#hull)"/>
+      <path d="M130 214 C 210 200, 360 208, 640 206" fill="none" stroke="#c9a44c" stroke-width="1.6" opacity="0.7"/>
+      <!-- gun ports -->
+      <g fill="#0c0a08" stroke="#c9a44c" stroke-width="0.8">
+        <ellipse cx="220" cy="214" rx="7" ry="5"/>
+        <ellipse cx="268" cy="212" rx="7" ry="5"/>
+        <ellipse cx="316" cy="211" rx="7" ry="5"/>
+        <ellipse cx="364" cy="211" rx="7" ry="5"/>
+        <ellipse cx="412" cy="212" rx="7" ry="5"/>
+        <ellipse cx="460" cy="213" rx="7" ry="5"/>
+        <ellipse cx="508" cy="215" rx="7" ry="5"/>
+      </g>
+      <!-- sterncastle -->
+      <path d="M548 178 L 628 170 L 642 204 L 548 204 Z" fill="#241610"/>
+      <path d="M560 176 L 620 170 L 620 188 L 560 192 Z" fill="#3a2418"/>
+      <rect x="572" y="176" width="10" height="12" fill="#c9a44c" opacity="0.35"/>
+      <rect x="592" y="174" width="10" height="12" fill="#c9a44c" opacity="0.35"/>
+      <!-- forecastle -->
+      <path d="M128 198 L 188 176 L 210 176 L 168 208 Z" fill="#2a1a12"/>
+      <!-- bowsprit -->
+      <path d="M128 196 L 52 168" stroke="#3a2a1c" stroke-width="4" stroke-linecap="round"/>
+      <path d="M52 168 L 78 150 L 96 176 Z" fill="url(#sail)" opacity="0.9"/>
+      <!-- masts -->
+      <rect x="246" y="38" width="5" height="150" fill="#2a1c12"/>
+      <rect x="372" y="18" width="6" height="170" fill="#2a1c12"/>
+      <rect x="508" y="52" width="5" height="136" fill="#2a1c12"/>
+      <!-- yards -->
+      <rect x="196" y="52" width="106" height="3" fill="#3a2a1c"/>
+      <rect x="208" y="92" width="84" height="3" fill="#3a2a1c"/>
+      <rect x="308" y="32" width="136" height="3.5" fill="#3a2a1c"/>
+      <rect x="322" y="78" width="110" height="3" fill="#3a2a1c"/>
+      <rect x="338" y="118" width="80" height="3" fill="#3a2a1c"/>
+      <rect x="474" y="66" width="78" height="3" fill="#3a2a1c"/>
+      <!-- sails -->
+      <path d="M200 55 Q 250 78 298 55 L 298 55 Q 250 42 200 55 Z" fill="url(#sail)"/>
+      <path d="M214 95 Q 250 118 288 95 Q 250 84 214 95 Z" fill="url(#sail)"/>
+      <path d="M214 128 Q 250 154 286 132 L 250 168 Z" fill="url(#sail)" opacity="0.92"/>
+      <path d="M314 35 Q 376 68 440 35 Q 376 18 314 35 Z" fill="url(#sail)"/>
+      <path d="M328 81 Q 376 112 426 81 Q 376 68 328 81 Z" fill="url(#sail)"/>
+      <path d="M344 121 Q 376 150 412 124 L 376 172 Z" fill="url(#sail)" opacity="0.92"/>
+      <path d="M478 69 Q 512 96 548 69 Q 512 56 478 69 Z" fill="url(#sail)"/>
+      <path d="M500 108 L 548 150 L 512 170 L 490 128 Z" fill="url(#sail)" opacity="0.88"/>
+      <!-- rigging -->
+      <g stroke="#c9a44c" stroke-opacity="0.28" stroke-width="0.8" fill="none">
+        <path d="M249 40 L 128 196"/>
+        <path d="M375 20 L 249 40"/>
+        <path d="M375 20 L 511 54"/>
+        <path d="M511 54 L 628 170"/>
+        <path d="M249 40 L 196 208"/>
+        <path d="M378 20 L 652 204"/>
+      </g>
+      <!-- lanterns -->
+      <circle cx="176" cy="190" r="4.5" fill="#c9a44c">
+      </circle>
+      <circle cx="176" cy="190" r="10" fill="#c9a44c" opacity="0.25"/>
+      <circle cx="620" cy="186" r="5" fill="#7a2e24"/>
+      <circle cx="620" cy="186" r="12" fill="#7a2e24" opacity="0.35"/>
+      <!-- flags -->
+      <path d="M375 18 L 375 4 L 408 12 L 375 20 Z" fill="#7a2e24"/>
+      <path d="M248 38 L 248 24 L 274 32 L 248 40 Z" fill="#c9a44c"/>
+      <!-- crow's nest -->
+      <rect x="366" y="28" width="18" height="5" rx="1" fill="#c9a44c" opacity="0.7"/>
+    </svg>
+    <div class="scrim"></div>
+    <div class="lockup">
+      <h1>VOYAGE '26</h1>
+      <div class="rule"><span></span><i class="jewel"></i><span></span></div>
+      <h2>AIESEC in IIT</h2>
+    </div>
+    <div class="vignette"></div>
+    <div class="grain"></div>
+  </div>
+</body>
+</html>
