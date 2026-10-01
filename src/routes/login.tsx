@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
-import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
+import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { CompassRose } from "@/components/pirate/ornament";
 import { Button } from "@/components/ui/button";
@@ -111,24 +111,6 @@ function Login() {
                 : "Already have an account? Sign in"}
             </button>
 
-            <div className="my-5 flex items-center gap-3 text-[0.65rem] tracking-[0.2em] text-muted uppercase">
-              <span className="h-px flex-1 bg-gold/20" />
-              Or
-              <span className="h-px flex-1 bg-gold/20" />
-            </div>
-
-            <div className="grid gap-2">
-              {GROK_PROVIDERS.map((p) => (
-                <Button
-                  key={p.providerId}
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => signIn(p.providerId, { callbackURL: "/admin" })}
-                >
-                  Continue with {p.label}
-                </Button>
-              ))}
-            </div>
           </>
         ) : (
           <p className="mt-6 text-center text-sm text-muted">Sign-in is disabled.</p>
